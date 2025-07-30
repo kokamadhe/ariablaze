@@ -1,0 +1,25 @@
+[tool.poetry]
+name = "ariablaze-bot"
+version = "0.1.0"
+description = "NSFW Erotic Telegram AI Bot"
+authors = ["Emri Yt <email@example.com>"]
+readme = "README.md"
+license = "MIT"
+homepage = "https://github.com/kokamadhe/ariablaze"
+repository = "https://github.com/kokamadhe/ariablaze"
+keywords = ["telegram", "bot", "erotic", "ai"]
+
+[tool.poetry.dependencies]
+python = "^3.10"
+flask = "^3.1.1"
+python-telegram-bot = "13.15"
+requests = "^2.32.4"
+gunicorn = "^23.0.0"
+python-dotenv = "^1.1.1"
+
+[tool.poetry.dev-dependencies]
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
