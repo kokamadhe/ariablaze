@@ -24,9 +24,7 @@ c.execute("CREATE TABLE IF NOT EXISTS premium_users (user_id INTEGER PRIMARY KEY
 conn.commit()
 
 # Rruga Flask për webhook
-@app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
-    @app.route("/webhook", methods=["POST"])
+@app.route("/webhook", methods=["POST"])
 def webhook_alias():
     return webhook()
     update = Update.de_json(request.get_json(force=True), bot)
