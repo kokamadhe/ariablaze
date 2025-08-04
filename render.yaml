@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: spicy-telegram-bot
+    env: python
+    plan: free
+    buildCommand: "poetry install"
+    startCommand: "poetry run python main.py"
+    envVars:
+      - key: TELEGRAM_BOT_TOKEN
+        fromSecret: TELEGRAM_BOT_TOKEN
+      - key: OPENROUTER_API_KEY
+        fromSecret: OPENROUTER_API_KEY
+      - key: MODEL_LAB_API_KEY
+        fromSecret: MODEL_LAB_API_KEY
+      - key: NOWPAYMENTS_API_KEY
+        fromSecret: NOWPAYMENTS_API_KEY
