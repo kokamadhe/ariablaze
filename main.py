@@ -25,8 +25,7 @@ conn.commit()
 
 # Rruga Flask për webhook
 @app.route("/webhook", methods=["POST"])
-def webhook_alias():
-    return webhook()
+def webhook_handler():
     update = Update.de_json(request.get_json(force=True), bot)
     dp.process_update(update)
     return "OK"
