@@ -3,7 +3,6 @@ name = "Aria-Blaze-bot"
 version = "0.1.0"
 description = "NSFW Erotic Telegram AI Bot"
 authors = ["Your Name <you@example.com>"]
-**package-mode = false**  # ✅ Add this line
 
 [tool.poetry.dependencies]
 python = "3.11.9"
