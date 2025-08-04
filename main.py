@@ -1,6 +1,4 @@
 import os
-import sqlite3
-import json
 import requests
 from flask import Flask, request
 from telegram import Bot, Update
@@ -9,107 +7,105 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-TOKEN = os.getenv("TELEGRAM_BOT_TOKEN")
+# Konfigurimi
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY")
-MODEL_LAB_API_KEY = os.getenv("MODEL_LAB_API_KEY")
-NOWPAYMENTS_API_KEY = os.getenv("NOWPAYMENTS_API_KEY")
+STABILITY_API_KEY = os.getenv("STABILITY_API_KEY")
 
+bot = Bot(token=BOT_TOKEN)
 app = Flask(__name__)
-bot = Bot(token=TOKEN)
 
-conn = sqlite3.connect("users.db", check_same_thread=False)
-c = conn.cursor()
-c.execute("CREATE TABLE IF NOT EXISTS premium_users (user_id INTEGER PRIMARY KEY)")
-conn.commit()
-
-@app.route(f"/{TOKEN}", methods=["POST"])
-def webhook():
-    update = Update.de_json(request.get_json(force=True), bot)
-    dp.process_update(update)
-    return "OK"
-
-def eshte_premium(user_id):
-    c.execute("SELECT * FROM premium_users WHERE user_id=?", (user_id,))
-    return c.fetchone() is not None
-
-def paguaj(update, context):
-    user_id = update.effective_user.id
-    payload = {
-        "price_amount": 15,
-        "price_currency": "USD",
-        "pay_currency": "USDTTRC20",
-        "order_id": str(user_id),
-        "order_description": "SpicyBot Premium Access",
-        "success_url": "https://t.me/your_bot_username",
-        "cancel_url": "https://t.me/your_bot_username"
-    }
-    headers = {
-        "x-api-key": NOWPAYMENTS_API_KEY,
-        "Content-Type": "application/json"
-    }
-    res = requests.post("https://api.nowpayments.io/v1/invoice", headers=headers, json=payload)
-    data = res.json()
-    link = data.get("invoice_url", None)
-    if link:
-        update.message.reply_text(f"💸 Paguaj këtu për të aktivizuar premium:\n{link}")
-    else:
-        update.message.reply_text("❌ Gabim gjatë krijimit të pagesës. Ju lutem provoni më vonë.")
-
-def imazh(update, context):
-    user_id = update.effective_user.id
-    if not eshte_premium(user_id):
-        update.message.reply_text("🔒 Kjo veçori është vetëm për përdoruesit premium.")
-        return
-
-    prompt = " ".join(context.args)
-    if not prompt:
-        update.message.reply_text("❗ Ju lutem shkruani përshkrimin, p.sh. /image vajzë me flokë të kuq")
-        return
-
-    response = requests.post(
-        "https://api.modellab.dev/api/v1/generate",
-        headers={"Authorization": f"Bearer {MODEL_LAB_API_KEY}"},
-        json={"prompt": prompt}
-    )
-
-    data = response.json()
-    image_url = data.get("output", [""])[0]
-    if image_url:
-        bot.send_photo(chat_id=update.effective_chat.id, photo=image_url)
-    else:
-        update.message.reply_text("⚠️ Dështoi krijimi i imazhit. Provoni përsëri.")
-
-def trajto_mesazhin(update, context):
-    user_id = update.effective_user.id
-    text = update.message.text
-
-    if not eshte_premium(user_id):
-        update.message.reply_text("🔒 Vetëm për përdoruesit premium. Përdorni /pay për të aktivizuar.")
-        return
-
+# AI Chat me OpenRouter
+def generate_ai_reply(prompt):
     headers = {
         "Authorization": f"Bearer {OPENROUTER_API_KEY}",
         "Content-Type": "application/json"
     }
-    payload = {
-        "model": "nousresearch/nous-hermes-2-mixtral-8x7b-dpo",
-        "messages": [{"role": "user", "content": text}]
+    data = {
+        "model": "nous-hermes2",
+        "messages": [{"role": "user", "content": prompt}],
+        "temperature": 0.9
     }
-    res = requests.post("https://openrouter.ai/api/v1/chat/completions", headers=headers, json=payload)
-    reply = res.json()["choices"][0]["message"]["content"]
+    response = requests.post("https://openrouter.ai/api/v1/chat/completions", json=data, headers=headers)
+    if response.ok:
+        return response.json()["choices"][0]["message"]["content"]
+    else:
+        return "⛔️ Ndodhi një gabim me AI-në."
+
+# Gjenerim imazhi me Stable Diffusion
+def generate_image(prompt):
+    headers = {
+        "Authorization": f"Bearer {STABILITY_API_KEY}",
+        "Content-Type": "application/json"
+    }
+    data = {
+        "text_prompts": [{"text": prompt}],
+        "cfg_scale": 10,
+        "clip_guidance_preset": "FAST_BLUE",
+        "height": 512,
+        "width": 512,
+        "samples": 1,
+        "steps": 30
+    }
+    res = requests.post("https://api.stability.ai/v1/generation/stable-diffusion-v1-5/text-to-image", headers=headers, json=data)
+    if res.ok:
+        img_data = res.json()["artifacts"][0]["base64"]
+        return img_data
+    else:
+        return None
+
+# Komanda Start
+def start(update, context):
+    update.message.reply_text("👋 Përshëndetje! Unë jam SpicyChatBot, një asistente virtuale erotike. Dërgo një mesazh për të filluar.")
+
+# Komanda Help
+def help_command(update, context):
+    update.message.reply_text("📋 Komandat e disponueshme:\n/start – Fillimi\n/help – Ndihmë\n/image – Gjenero imazh\n/pay – Paguaj për Premium")
+
+# Komanda Image
+def image(update, context):
+    prompt = " ".join(context.args)
+    if not prompt:
+        update.message.reply_text("✍️ Të lutem shkruaj një përshkrim për imazhin: /image një vajzë misterioze në plazh")
+        return
+
+    update.message.reply_text("🎨 Duke gjeneruar imazhin...")
+    image_base64 = generate_image(prompt)
+    if image_base64:
+        update.message.reply_photo(photo=bytes.fromhex(image_base64.encode().hex()))
+    else:
+        update.message.reply_text("⛔️ Nuk u gjenerua dot imazhi.")
+
+# Komanda Pay
+def pay(update, context):
+    update.message.reply_text("💸 Për të aktivizuar premium, na shkruaj ose vizito linkun në bio.")
+
+# AI Chat
+def handle_message(update, context):
+    user_input = update.message.text
+    reply = generate_ai_reply(user_input)
     update.message.reply_text(reply)
 
-def shto_premium(update, context):
-    user_id = update.effective_user.id
-    c.execute("INSERT OR IGNORE INTO premium_users (user_id) VALUES (?)", (user_id,))
-    conn.commit()
-    update.message.reply_text("✅ Ju jeni shënuar si përdorues premium!")
+# Webhook
+@app.route('/webhook', methods=['POST'])
+def webhook():
+    update = Update.de_json(request.get_json(force=True), bot)
+    dispatcher.process_update(update)
+    return 'ok'
 
-dp = Dispatcher(bot, None, workers=0, use_context=True)
-dp.add_handler(CommandHandler("pay", paguaj))
-dp.add_handler(CommandHandler("image", imazh))
-dp.add_handler(CommandHandler("addpremium", shto_premium))
-dp.add_handler(MessageHandler(Filters.text & ~Filters.command, trajto_mesazhin))
+# Konfiguro dispatcher
+dispatcher = Dispatcher(bot, None, workers=0)
+dispatcher.add_handler(CommandHandler("start", start))
+dispatcher.add_handler(CommandHandler("help", help_command))
+dispatcher.add_handler(CommandHandler("image", image))
+dispatcher.add_handler(CommandHandler("pay", pay))
+dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
 
-if __name__ == "__main__":
-    app.run()
+# Home page
+@app.route('/')
+def home():
+    return 'SpicyChatBot është aktiv 🟢'
+
+if __name__ == '__main__':
+    app.run(debug=False)
+
