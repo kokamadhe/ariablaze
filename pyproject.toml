@@ -1,5 +1,5 @@
 [tool.poetry]
-name = "Aria-Blaze-bot"
+name = "spicy-telegram-bot"
 version = "0.1.0"
 description = "NSFW Erotic Telegram AI Bot"
 authors = ["Your Name <you@example.com>"]
